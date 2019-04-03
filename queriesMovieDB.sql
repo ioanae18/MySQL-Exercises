@@ -86,14 +86,15 @@ GROUP BY mID) AS smallestCast);
 
 #6.Find all the actors who acted in films by at least 10 distinct directors.
 #Varianta 1:
-SELECT DISTINCT a.id, CONCAT(a.fName, ', ' , a.lName) AS Actor, CONCAT(d.fName, ', ', d.lName) AS Director
+SELECT COUNT(a.id)-- , CONCAT(a.fName, ', ' , a.lName) AS Actor-- , CONCAT(d.fName, ', ', d.lName) AS Director
 FROM Actor AS a
 INNER JOIN Cast AS c ON a.ID = c.pID
 INNER JOIN MovieDirector AS md ON md.movieID = c.mID
-INNER JOIN Movie AS m ON m.ID = md.movieID 
-INNER JOIN Director AS d ON d.ID = md.dID 
-GROUP BY ID
-HAVING COUNT(dID) >= 10;
+-- INNER JOIN Director AS d ON d.ID = md.dID 
+GROUP BY a.id
+HAVING COUNT(DISTINCT dID) >= 10;
+
+CREATE INDEX MovieDirectormovieID ON `MovieDirector`(movieID); 
 
 #Varianta 2:
 CREATE TEMPORARY TABLE actorCast AS (
@@ -139,17 +140,63 @@ WHERE c2.mID = m.ID
 AND c2.pID = a.id 
 AND a.gender = 'M');
 
+SELECT c1.mID, COUNT(a1.id) as nbActorF, COUNT(a2.id) as nbActorM
+FROM Cast as c1
+	LEFT OUTER JOIN Actor as a1
+		ON c1.pID = a1.id 
+		AND a1.gender = 'F'
+	LEFT OUTER JOIN Actor as a2
+		ON c1.pID = a2.id 
+		AND a2.gender = 'M'
+GROUP BY c1.mID
+HAVING COUNT(a1.id) > COUNT(a2.id);
+
+SELECT * FROM Actor
+WHERE gender = 'F';
+
+SELECT * FROM Cast
+	WHERE pID = 528829;
+    
+SELECT * from Cast
+INNER JOIN Actor ON Cast.pID = Actor.ID
+WHERE gender = 'F';
+
+SELECT Count(*) FROM Cast;
+
 #9.For every pair of male and female actors that appear together in some film, find the total number of films in
 #which they appear together. Sort the answers in decreasing order of the total number of films.
-SELECT MaleActor.fName, MaleActor.lName, FemActor.fName, FemActor.lName, COUNT(MaleCast.mID) AS no_movies
+SELECT MaleActor.id, FemActor.id, MaleActor.fName, MaleActor.lName, FemActor.fName, FemActor.lName, COUNT(MaleCast.mID) AS no_movies
 FROM Actor AS MaleActor
-INNER JOIN Cast AS MaleCast ON MaleActor.id = MaleCast.pID
-INNER JOIN Cast AS FemCast ON MaleCast.pID = FemCast.pID
-INNER JOIN Actor AS FemActor ON FemActor.id = FemCast.pID
+	INNER JOIN Cast AS MaleCast ON MaleActor.id = MaleCast.pID
+	INNER JOIN Cast AS FemCast ON MaleCast.mID = FemCast.mID
+	INNER JOIN Actor AS FemActor ON FemActor.id = FemCast.pID
 WHERE MaleActor.gender = 'M' AND FemActor.gender = 'F'
-GROUP BY MaleActor.id
-HAVING no_movies > 0
+GROUP BY MaleActor.id, FemActor.id, MaleActor.fName, MaleActor.lName, FemActor.fName, FemActor.lName
 ORDER BY no_movies DESC;
+
+
+
+
+SELECT idMale, idFemale, COUNT(MaleCast.mid) AS nbFilms
+FROM 
+(
+	SELECT pid as idMale, mid
+	FROM Cast AS MaleCast
+		INNER JOIN Actor AS MaleActor
+			ON MaleActor.id = MaleCast.pID
+			AND MaleActor.gender = 'M' 
+) AS MaleCast
+INNER JOIN 
+(
+	SELECT pid as idFemale, mid
+	FROM Cast AS FemCast
+		INNER JOIN Actor AS FemActor 
+			ON FemActor.id = FemCast.pID
+			AND FemActor.gender = 'F'
+) AS FemCast
+	ON MaleCast.mid = FemCast.mid
+GROUP BY idMale, idFemale
+ORDER BY nbFilms DESC;
 
 #10.For every actor, list the films he/she appeared in their debut year. Sort the results by last name of the actor.
 #Varianta 1:
@@ -223,6 +270,16 @@ GROUP BY m1.releaseyear
 ORDER BY m1.moviename DESC
 LIMIT 1;
 
+
+
+SELECT m1.releaseyear AS decade_start, m1.releaseyear + 9 AS decade_end, COUNT(*) AS no_movies
+FROM
+Movie AS m1
+WHERE m1.releaseyear BETWEEN m1.releaseyear AND m1.releaseyear + 9
+GROUP BY m1.releaseyear
+ORDER BY m1.moviename DESC
+LIMIT 1;
+
 #13.Rank the actors based on their popularity, and compute a list of all actors in descending order of their 
 #popularity ranks.  You need to come up with your own metric for computing the popularity ranking.  This may 
 #include information such as the number of movies that an actor has acted in; the 'popularity' of these movies' 
@@ -232,13 +289,93 @@ LIMIT 1;
 
 SELECT actorRank
 FROM 
-(SELECT a.lName, a.fName 
-(CASE 
-WHEN COUNT(m.id) AS noMoviesActed AND COUNT(md.mID) AS noMoviesDirected BETWEEN 80 AND 100 THEN 'Very popular'
-WHEN COUNT(m.id) AS noMoviesActed AND COUNT(md.mID) AS noMoviesDirected BETWEEN 50 AND 79 THEN 'Popular'
-WHEN COUNT(m.id) AS noMoviesActed AND COUNT(md.mID) AS noMoviesDirected < 50 THEN 'Not popular at all'
-END) actorRank
+(
+	SELECT a.lName, a.fName 
+		(CASE 
+			WHEN COUNT(m.id) AND COUNT(md.mID) BETWEEN 80 AND 100 THEN 'Very popular'
+			WHEN COUNT(m.id) AND COUNT(md.mID) BETWEEN 50 AND 79 THEN 'Popular'
+			WHEN COUNT(m.id) AND COUNT(md.mID) < 50 THEN 'Not popular at all'
+		END) actorRank
 FROM Actor AS a
-INNER JOIN MovieDirector AS md ON a.id = md.pID
-INNER JOIN Movie AS m ON m.id = md.mID) ar
+	INNER JOIN MovieDirector AS md ON a.id = md.dID
+	INNER JOIN Movie AS m ON m.id = md.mID) ar
 GROUP BY ar.actorRank;
+
+#Write a query in SQL to list all the information of the actors who played a role in the movie 'Annie Hall'.
+#Varianta 1:
+SELECT Actor.id, Actor.fName, Actor.lName, Actor.gender FROM Actor
+INNER JOIN Cast ON Actor.id = Cast.pID
+INNER JOIN Movie ON Movie.id = Cast.mID
+WHERE movieName = 'Annie Hall';
+
+#Varianta 2:
+SELECT * 
+FROM actor 
+WHERE Actor.id IN (
+SELECT Actor.id 
+FROM Cast 
+WHERE mID IN (
+SELECT id 
+FROM movie 
+WHERE movieName = 'Annie Hall'
+));
+
+#Write a query in SQL to find the name of the director (first and last names) who directed a movie that casted a role for 'Eyes Wide Shut'.
+SELECT fName, lName
+FROM  Director
+WHERE id IN (
+SELECT did 
+FROM MovieDirector
+WHERE movieID IN (
+SELECT mID 
+FROM Cast
+WHERE role = ANY (
+	SELECT role 
+	FROM Cast 
+	WHERE mid IN (
+		SELECT id 
+		FROM Movie 
+		WHERE moviename = 'Eyes Wide Shut'))));
+
+#Write a query in SQL to find the titles of all movies directed by the director whose first and last name are Woddy Allen.
+SELECT movieName
+FROM Movie
+INNER JOIN MovieDirector ON Movie.id = MovieDirector.movieID
+INNER JOIN Director ON MovieDirector.dID = Director.id
+WHERE Director.fName = 'Allen' AND Director.lName = 'Woody';
+
+#Write a query in SQL to find all the years which produced at least one movie and that received a rating of more than 3 stars. Show the results in increasing order.
+SELECT releaseyear
+FROM Movie
+WHERE movierank > 3
+ORDER BY releaseyear;
+
+#Write a query in SQL to find the titles of all movies that have no ratings.
+SELECT moviename
+FROM Movie
+WHERE movierank IS NULL
+ORDER BY moviename;
+
+#Write a query in SQL to find the movie title, and the highest number of stars that movie received and arranged the result according to the group of a movie and the movie 
+#title appear alphabetically in ascending order.
+SELECT movieName, MAX(movieRank) 
+FROM Movie
+WHERE movieRank IS NOT NULL	
+GROUP BY movieName
+ORDER BY movieName ASC;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
