@@ -363,19 +363,3 @@ FROM Movie
 WHERE movieRank IS NOT NULL	
 GROUP BY movieName
 ORDER BY movieName ASC;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
