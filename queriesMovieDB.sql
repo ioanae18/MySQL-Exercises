@@ -24,9 +24,9 @@ OR m.releaseyear % 400 = 0);
 SELECT *
 FROM Movie AS m1
 INNER JOIN (SELECT movierank, releaseyear
-FROM Movie
-WHERE moviename = 'Shrek (2001)'
-) AS m2
+	FROM Movie
+	WHERE moviename = 'Shrek (2001)'
+	) AS m2
 ON m1.movierank > m2.movierank
 AND m1.releaseyear = m2.releaseyear;
 
@@ -51,8 +51,8 @@ FROM Movie AS m
 INNER JOIN Cast AS c ON m.ID = c.mID
 GROUP BY m.ID, m.moviename
 HAVING COUNT(*) >= ALL (SELECT COUNT(*) 
-FROM Cast
-GROUP BY mID);
+	FROM Cast
+	GROUP BY mID);
 
 #Varianta 2:
 SELECT m.moviename, COUNT(*) AS cast_size
@@ -60,9 +60,9 @@ FROM Movie AS m
 INNER JOIN Cast AS c ON m.ID = c.mID
 GROUP BY m.ID, m.moviename
 HAVING COUNT(*) = (SELECT MAX(nbActors) 
-FROM (SELECT COUNT(*) AS nbActors
-FROM Cast
-GROUP BY mID) AS largestCast);
+	FROM (SELECT COUNT(*) AS nbActors
+		FROM Cast
+		GROUP BY mID) AS largestCast);
 
 #b)Find the film(s) with the smallest cast.
 #Varianta 1:
@@ -71,8 +71,8 @@ FROM Movie m
 INNER JOIN Cast c ON m.ID = c.mID
 GROUP BY m.ID, m.moviename
 HAVING COUNT(*) <= ALL (SELECT COUNT(*) 
-FROM Cast
-GROUP BY mID);
+	FROM Cast
+	GROUP BY mID);
 
 #Varianta 2:
 SELECT m.moviename, COUNT(*) AS cast_size
@@ -80,9 +80,9 @@ FROM Movie AS m
 INNER JOIN Cast AS c ON m.ID = c.mID
 GROUP BY m.ID, m.moviename
 HAVING COUNT(*) = (SELECT MIN(nbActors) 
-FROM (SELECT COUNT(*) AS nbActors
-FROM Cast
-GROUP BY mID) AS smallestCast);
+	FROM (SELECT COUNT(*) AS nbActors
+		FROM Cast
+		GROUP BY mID) AS smallestCast);
 
 #6.Find all the actors who acted in films by at least 10 distinct directors.
 #Varianta 1:
@@ -135,10 +135,10 @@ AND c1.pID = a.id
 AND a.gender = 'F'
 GROUP BY m.ID
 HAVING COUNT(*) > (SELECT COUNT(*)
-FROM Cast AS c2, Actor AS a
-WHERE c2.mID = m.ID 
-AND c2.pID = a.id 
-AND a.gender = 'M');
+	FROM Cast AS c2, Actor AS a
+	WHERE c2.mID = m.ID 
+	AND c2.pID = a.id 
+	AND a.gender = 'M');
 
 SELECT c1.mID, COUNT(a1.id) as nbActorF, COUNT(a2.id) as nbActorM
 FROM Cast as c1
@@ -205,9 +205,9 @@ FROM Actor AS a, Movie AS m1, Cast AS c1
 WHERE a.ID = c1.pID
 AND m1.ID = c1.mID
 AND m1.releaseyear = (SELECT MIN(releaseyear) 
-FROM Movie AS m2, Cast AS c2
-WHERE m2.ID = c2.mID
-AND a.ID = c2.pID)
+	FROM Movie AS m2, Cast AS c2
+	WHERE m2.ID = c2.mID
+	AND a.ID = c2.pID)
 ORDER BY a.lName;
 
 #Varianta 2:
@@ -216,10 +216,10 @@ FROM Actor AS a
 INNER JOIN Cast AS c1 ON a.id = c1.pID
 INNER JOIN Movie AS m1 ON m1.ID = c1.mID
 WHERE m1.releaseyear = (SELECT MIN(releaseyear)
-FROM Movie AS m2
-INNER JOIN Cast AS c2 ON m2.ID = c2.mID
-INNER JOIN Actor ON a.id = c2.pID
-ORDER BY a.lName);
+	FROM Movie AS m2
+	INNER JOIN Cast AS c2 ON m2.ID = c2.mID
+	INNER JOIN Actor ON a.id = c2.pID
+	ORDER BY a.lName);
 
 #Varianta 3:
 CREATE TEMPORARY TABLE ActorCast AS (
@@ -229,17 +229,17 @@ INNER JOIN Cast AS c
 ON a.id = c.pID);
 
 CREATE TEMPORARY TABLE ActorCastMovie AS (
-SELECT id, fName,  lName, moviename, releaseyear
-FROM ActorCast AS ac
-INNER JOIN Movie AS m
-ON ac.mID = mID);
+	SELECT id, fName,  lName, moviename, releaseyear
+	FROM ActorCast AS ac
+	INNER JOIN Movie AS m
+	ON ac.mID = mID);
 
 SELECT fName, lName, moviename, releaseyear
 FROM ActorCastMovie
 WHERE releaseyear = (SELECT MIN(releaseyear)
-FROM Movie AS m1, Cast AS c1
-WHERE m1.id = c1.mID 
-AND a.id = c1.pID);
+	FROM Movie AS m1, Cast AS c1
+	WHERE m1.id = c1.mID 
+	AND a.id = c1.pID);
 
 #12.The Bacon number of an actor is the length of the shortest path between the actor and Kevin Bacon in the 
 #"co-acting" graph. That is, Kevin Bacon has Bacon number 0; all actors who acted in the same film as KB have 
@@ -252,18 +252,18 @@ AND a.id = c1.pID);
 #How big is the query?
 SELECT COUNT(DISTINCT pID) FROM Cast 
 WHERE mID IN (SELECT mID FROM Cast
-WHERE pID IN (SELECT DISTINCT pID IN (
-SELECT DISTINCT pID FROM Cast WHERE mID IN (SELECT mID FROM Cast INNER JOIN Actor
-ON pID = Actor.id WHERE fName = 'Kevin' AND lName = 'Bacon')))
+	WHERE pID IN (SELECT DISTINCT pID IN (
+		SELECT DISTINCT pID FROM Cast WHERE mID IN (SELECT mID FROM Cast INNER JOIN Actor
+		ON pID = Actor.id WHERE fName = 'Kevin' AND lName = 'Bacon')))
 AND pID NOT IN (SELECT DISTINCT pID FROM Cast WHERE mID IN (
-SELECT mID FROM Cast INNER JOIN Actor ON
-pID = Actor.id WHERE fName  = 'Kevin' AND lName = 'Bacon'));
+	SELECT mID FROM Cast INNER JOIN Actor ON
+	pID = Actor.id WHERE fName  = 'Kevin' AND lName = 'Bacon'));
 
 #12.A decade is a sequence of 10 consecutive years. For example 1965, 1966, ..., 1974 is a decade, and so is 1967, 
 #1968, ..., 1976. Find the decade with the largest number of films.
 SELECT m1.releaseyear AS decade_start, m1.releaseyear + 9 AS decade_end, COUNT(*) AS no_movies
 FROM (SELECT DISTINCT releaseyear 
-FROM Movie) T JOIN 
+	FROM Movie) T JOIN 
 Movie AS m1
 ON m1.releaseyear BETWEEN m1.releaseyear AND m1.releaseyear + 9
 GROUP BY m1.releaseyear
@@ -312,30 +312,30 @@ WHERE movieName = 'Annie Hall';
 SELECT * 
 FROM actor 
 WHERE Actor.id IN (
-SELECT Actor.id 
-FROM Cast 
-WHERE mID IN (
-SELECT id 
-FROM movie 
-WHERE movieName = 'Annie Hall'
-));
+	SELECT Actor.id 
+	FROM Cast 
+	WHERE mID IN (
+		SELECT id 
+		FROM movie 
+		WHERE movieName = 'Annie Hall'
+		));
 
 #Write a query in SQL to find the name of the director (first and last names) who directed a movie that casted a role for 'Eyes Wide Shut'.
 SELECT fName, lName
 FROM  Director
 WHERE id IN (
-SELECT did 
-FROM MovieDirector
-WHERE movieID IN (
-SELECT mID 
-FROM Cast
-WHERE role = ANY (
-	SELECT role 
-	FROM Cast 
-	WHERE mid IN (
-		SELECT id 
-		FROM Movie 
-		WHERE moviename = 'Eyes Wide Shut'))));
+	SELECT did 
+	FROM MovieDirector
+	WHERE movieID IN (
+		SELECT mID 
+		FROM Cast
+		WHERE role = ANY (
+			SELECT role 
+			FROM Cast 
+			WHERE mid IN (
+				SELECT id 
+				FROM Movie 
+				WHERE moviename = 'Eyes Wide Shut'))));
 
 #Write a query in SQL to find the titles of all movies directed by the director whose first and last name are Woddy Allen.
 SELECT movieName
